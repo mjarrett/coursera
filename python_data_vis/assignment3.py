@@ -17,8 +17,7 @@ df = pd.DataFrame([np.random.normal(33500,150000,3650),
                    np.random.normal(48000,55000,3650)],
                   index=[1992,1993,1994,1995])
 
-df['Mean'] = df.mean()
-df['STD'] = df.std()
+
 
 
 class MyFig:
@@ -28,10 +27,13 @@ class MyFig:
         self.df = df
         self.ndf = self.df.transpose()
 
+        self.means = self.ndf.mean()
+        self.stds = self.ndf.std()
+
         self.f,self.ax = plt.subplots(1)
         self.f.show()
         self.xlabels = [str(x) for x in df.index]
-        self.bar = self.ax.bar(self.df.index,df['Mean'],yerr=self.df['STD'],color='lightblue')
+        self.bar = self.ax.bar(self.df.index,self.means,yerr=self.stds,color=(0.5,0,0,1))
         self.ax.xaxis.set_ticks(self.df.index)
         self.ax.xaxis.set_ticklabels(self.xlabels)
         self.ax.set_xlim(1991,1996)
@@ -63,7 +65,7 @@ class MyFig:
 
             prob_list = self.get_prob()
             for i in [0,1,2,3]:
-                self.bar[i].set_color(str(prob_list[i]))
+                self.bar[i].set_color((prob_list[i],0,0,1))
 
         self.f.canvas.draw()
 
@@ -76,7 +78,8 @@ class MyFig:
             ys = sorted([self.y1,self.y2])
             self.lower = ys[0]
             self.upper = ys[1]
-            results.append(len(self.ndf[(self.ndf[ind]<self.upper) & (self.ndf[ind]>self.lower)])/len(self.ndf))
+            #results.append(len(self.ndf[(self.ndf[ind]<self.upper) & (self.ndf[ind]>self.lower)])/len(self.ndf))
+            results.append((self.upper-self.means[ind])/(4*self.stds[ind]))
         print(self.upper,self.lower)
         print(results)
         return results
