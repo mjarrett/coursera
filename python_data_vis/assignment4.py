@@ -11,6 +11,10 @@ import matplotlib.patches as mpatches
 sns.set_style('white')
 
 
+###########################
+# Organize and clean data
+###########################
+
 hdf = pd.read_excel('housing_data.xlsx',header=2,skiprows=[3,5,6,17,18],skipfooter=6)[11:].transpose()
 rdf = pd.read_excel('rental_data.xlsx',header=2,skiprows=[3,5,6,17,18],skipfooter=6)[11:].transpose()
 
@@ -31,23 +35,17 @@ for col in range(1993,2016):
 drdf[1992] = 1
 drdf = drdf.transpose()
 
-#df = hdf.join(rdf,how='outer',lsuffix='_housing',rsuffix='_rental')
 
+###########################
+# Make initial plot
+###########################
 
-
-
-#citydf=df[df['Type']=='City']
 f,ax = plt.subplots(2,2)
+dhdfax = ax[0][0]
+rdfax = ax[1][0]
+regax = ax[0][1]
+regax2 = ax[1][1]
 
-# def make_timeseries(ax,df):
-#     for col in df.columns:
-#         line, = ax.plot(range(1992,2016),df[-24:][col],c='grey',alpha=0.15)
-#         if 'London' in col:
-#             line[0].set_color(sns.color_palette()[1])
-#             line[0].set_alpha(1)
-#         # if 'Vancouver' in col:
-#         #     line[0].set_color(sns.color_palette()[1])
-#         #     line[0].set_alpha(1)
 
 def make_timeseries(ax,df):
     lines = df[-24:].plot(c='grey',alpha=0.15,ax=ax,legend=False,picker=4)
@@ -55,47 +53,96 @@ def make_timeseries(ax,df):
     return lines, london_line
 
 
-dhdf_lines, dhdf_london_line = make_timeseries(ax[0][0],dhdf)
-rdf_lines, rdf_london_line = make_timeseries(ax[1][0],rdf)
-#ax[0].set_yscale("log")
+dhdf_lines, dhdf_london_line = make_timeseries(dhdfax,dhdf)
+rdf_lines, rdf_london_line = make_timeseries(rdfax,rdf)
 
-ax[0][0].set_title('Fractional Change in Housing Starts from 1992 for London and Other Canadian Cities')
-ax[1][0].set_title('Rental Vacancy Rate 1992-2015 for London and Other Canadian Cities')
-ax[0][0].set_ylabel('Change Housing Starts')
-ax[1][0].set_ylabel('Rental Vacancy Raimport matplotlib.patches as mpatcheste')
+dhdfax.set_title('Fractional Change in Housing Starts from 1992 for London and Other Canadian Cities')
+rdfax.set_title('Rental Vacancy Rate 1992-2015 for London and Other Canadian Cities')
+dhdfax.set_ylabel('Change Housing Starts')
+rdfax.set_ylabel('Rental Vacancy Raimport matplotlib.patches as mpatcheste')
 
 
-sns.regplot(x=rdf[-24:]['London'],y=hdf[-24:]['London'],ax=ax[0][1])
+#sns.regplot(x=rdf[-24:]['London'],y=hdf[-24:]['London'],ax=regax)
 #r,p = pearsonr(df.London_housing,df.London_rental)
-sns.regplot(x=rdf[-24:]['London'].shift(-6),y=hdf[-24:]['London'].shift(-6),ax=ax[1][1])
+#sns.regplot(x=rdf[-24:]['London'].shift(-6),y=hdf[-24:]['London'].shift(-6),ax=regdelax)
+
+pal = sns.dark_palette(sns.color_palette()[1],as_cmap=True)
+corr_scatter = regax.scatter(rdf[-24:]['London'],hdf[-24:]['London'],c=rdf.index.values,cmap=pal,picker=4)
+
+
 
 sns.despine()
 plt.tight_layout()
 
-
-
 london_patch = mpatches.Patch(color=sns.color_palette()[1], label='London')
-ax[0][0].legend(handles=[london_patch])
-ax[1][0].legend(handles=[london_patch])
+dhdfax.legend(handles=[london_patch])
+rdfax.legend(handles=[london_patch])
+
+
+
+###########################
+# Make plot interactive
+###########################
 
 def onpick(event):
 
-    if event.artist.get_color() == sns.color_palette()[2]:
-        event.artist.set_color('grey')
-        event.artist.set_alpha(0.15)
-        event.artist.axes.legend(handles=[london_patch])
-    else:
-        for line in ax[0][0].lines + ax[1][0].lines:
-            if line.get_label() != 'London':
-                line.set_color('grey')
-                line.set_alpha(0.15)
+    if event.artist.axes == regax:
+        ind = event.ind[0]
+        rental = float(rdf.iloc[ind]['London'])
+        housing = float(hdf.iloc[ind]['London'])
+        year = rdf.index.values[ind]
+        regax.text
+        print(year,event.mouseevent.x,event.mouseevent.y)
+        print(event.artist.axes.texts)
+        for t in event.artist.axes.texts:
+            t.remove()
+        regax.annotate(s=year,
+                        xy=(event.mouseevent.xdata,event.mouseevent.ydata),
+                        xycoords='data',
+                        color=sns.color_palette()[2],
+                        xytext=(0.9,0.9),
+                        textcoords='axes fraction',
+                        arrowprops=dict(facecolor=sns.color_palette()[2],shrink=0.05),
+                        )
 
-        if event.artist.get_label() != 'London':
-            event.artist.set_color(sns.color_palette()[2])
-            event.artist.set_alpha(0.8)
-            pick_patch = mpatches.Patch(color=sns.color_palette()[2], label=event.artist.get_label())
-            event.artist.axes.legend(handles=[london_patch,pick_patch])
+
+
+    elif event.artist.axes in [dhdfax,rdfax]:
+
+        # If clicking an activated (red) line
+        if event.artist.get_color() == sns.color_palette()[2]:
+            for line in dhdfax.lines + rdfax.lines:
+                if line.get_label() != 'London':
+                    line.set_color('grey')
+                    line.set_alpha(0.15)
+                    line.axes.legend(handles=[london_patch])
+
+        # If clicking a grey line
+        else:
+            for line in dhdfax.lines + rdfax.lines:
+                if line.get_label() != 'London':
+                    line.set_color('grey')
+                    line.set_alpha(0.15)
+
+            if event.artist.get_label() != 'London':
+                for line in [ x for x in dhdfax.lines + rdfax.lines if x.get_label() == event.artist.get_label()]:
+                    line.set_color(sns.color_palette()[2])
+                    line.set_alpha(0.8)
+                    pick_patch = mpatches.Patch(color=sns.color_palette()[2], label=event.artist.get_label())
+                    line.axes.legend(handles=[london_patch,pick_patch])
+
+                for collection in regax2.collections:
+                    collection.remove()
+                # recompute the ax.dataLim
+                regax2.relim()
+                # update ax.viewLim using the new dataLim
+                regax2.autoscale_view()
+                pal = sns.dark_palette(sns.color_palette()[2],as_cmap=True)
+                regax2.scatter(rdf[-24:][event.artist.get_label()],hdf[-24:][event.artist.get_label()],c=rdf.index.values,cmap=pal,picker=4)
+
     f.canvas.draw_idle()
+
+
 
 f.canvas.mpl_connect('pick_event', onpick)
 
