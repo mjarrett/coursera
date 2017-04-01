@@ -41,6 +41,8 @@ drdf = drdf.transpose()
 ###########################
 
 f,ax = plt.subplots(2,2)
+f.subplots_adjust(left=0.1, bottom=0.1, right=0.97, top=0.93,
+                    wspace=0.15, hspace=0.25)
 dhdfax = ax[0][0]
 rdfax = ax[1][0]
 regax = ax[0][1]
@@ -56,10 +58,10 @@ def make_timeseries(ax,df):
 dhdf_lines, dhdf_london_line = make_timeseries(dhdfax,dhdf)
 rdf_lines, rdf_london_line = make_timeseries(rdfax,rdf)
 
-dhdfax.set_title('Fractional Change in Housing Starts from 1992 for London and Other Canadian Cities')
-rdfax.set_title('Rental Vacancy Rate 1992-2015 for London and Other Canadian Cities')
+dhdfax.set_title('Fractional Change in Housing Starts from 1992 \nfor London and Other Canadian Cities')
+rdfax.set_title('Rental Vacancy Rate 1992-2015 \nfor London and Other Canadian Cities')
 dhdfax.set_ylabel('Change Housing Starts')
-rdfax.set_ylabel('Rental Vacancy Raimport matplotlib.patches as mpatcheste')
+rdfax.set_ylabel('Rental Vacancy Rate')
 
 
 #sns.regplot(x=rdf[-24:]['London'],y=hdf[-24:]['London'],ax=regax)
@@ -69,10 +71,17 @@ rdfax.set_ylabel('Rental Vacancy Raimport matplotlib.patches as mpatcheste')
 pal = sns.dark_palette(sns.color_palette()[1],as_cmap=True)
 corr_scatter = regax.scatter(rdf[-24:]['London'],hdf[-24:]['London'],c=rdf.index.values,cmap=pal,picker=4)
 
+regax.set_ylabel('Housing Starts')
+regax2.set_ylabel('Housing Starts')
+regax.set_xlabel('Vacancy Rate')
+regax2.set_xlabel('Vacancy Rate')
+regax.set_title('Housing Starts vs Vacancy Rate in London')
 
+for ax in regax,regax2,dhdfax,rdfax:
+    ax.set_alpha(0.7)
 
 sns.despine()
-plt.tight_layout()
+#plt.tight_layout()
 
 london_patch = mpatches.Patch(color=sns.color_palette()[1], label='London')
 dhdfax.legend(handles=[london_patch])
@@ -86,24 +95,34 @@ rdfax.legend(handles=[london_patch])
 
 def onpick(event):
 
-    if event.artist.axes == regax:
+    # If clicking on a scatter point
+    if event.artist.axes in [regax,regax2]:
         ind = event.ind[0]
         rental = float(rdf.iloc[ind]['London'])
         housing = float(hdf.iloc[ind]['London'])
+        dhousing = float(dhdf.iloc[ind+2]['London'])
         year = rdf.index.values[ind]
         regax.text
-        print(year,event.mouseevent.x,event.mouseevent.y)
-        print(event.artist.axes.texts)
+        #print(year,event.mouseevent.x,event.mouseevent.y)
+        # print(event.artist.axes.texts)
         for t in event.artist.axes.texts:
             t.remove()
-        regax.annotate(s=year,
+        event.artist.axes.annotate(s=year,
                         xy=(event.mouseevent.xdata,event.mouseevent.ydata),
                         xycoords='data',
-                        color=sns.color_palette()[2],
+                        color=sns.color_palette()[1],
                         xytext=(0.9,0.9),
                         textcoords='axes fraction',
-                        arrowprops=dict(facecolor=sns.color_palette()[2],shrink=0.05),
+                        arrowprops=dict(arrowstyle='-',facecolor=sns.color_palette()[1]),
                         )
+
+
+        if len(dhdfax.collections)>0:
+            dhdfax.collections[0].remove()
+            rdfax.collections[0].remove()
+
+        dhdfax.scatter(year,dhousing,zorder=0,color=sns.color_palette()[1])
+        rdfax.scatter(year,rental,zorder=0,color=sns.color_palette()[1])
 
 
 
@@ -123,6 +142,8 @@ def onpick(event):
                 if line.get_label() != 'London':
                     line.set_color('grey')
                     line.set_alpha(0.15)
+            if len(regax2.texts)>0:
+                regax2.texts[0].remove()
 
             if event.artist.get_label() != 'London':
                 for line in [ x for x in dhdfax.lines + rdfax.lines if x.get_label() == event.artist.get_label()]:
@@ -133,13 +154,14 @@ def onpick(event):
 
                 for collection in regax2.collections:
                     collection.remove()
+
                 # recompute the ax.dataLim
                 regax2.relim()
                 # update ax.viewLim using the new dataLim
                 regax2.autoscale_view()
                 pal = sns.dark_palette(sns.color_palette()[2],as_cmap=True)
                 regax2.scatter(rdf[-24:][event.artist.get_label()],hdf[-24:][event.artist.get_label()],c=rdf.index.values,cmap=pal,picker=4)
-
+                regax2.set_title('Housing Starts vs Vacancy Rate in {}'.format(event.artist.get_label()))
     f.canvas.draw_idle()
 
 
